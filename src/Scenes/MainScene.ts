@@ -9,6 +9,8 @@ import {
   StandardMaterial,
   Color3,
   KeyboardEventTypes
+  CubeTexture,
+  Texture,
 } from "@babylonjs/core";
 import { SceneManager } from "../SceneManager";
 import { SceneA } from './SceneA';
@@ -38,6 +40,17 @@ export class MainScene extends AbstractScene {
 
     this.camera = new FreeCamera("MainCamera", new Vector3(0, 20, 50), scene);
     this.camera.setTarget(new Vector3(0, 0, -20));
+    const skyboxSize = 1000;
+    const skybox = MeshBuilder.CreateBox("skyBox", { size: skyboxSize }, scene);
+    const skyboxMaterial = new StandardMaterial("skyBoxMaterial", scene);
+    skyboxMaterial.backFaceCulling = false;
+    skyboxMaterial.disableLighting = true;
+    // Remplacez "textures/skyboxClouds" par le chemin vers vos images (conformément à la convention de BabylonJS)
+    skyboxMaterial.reflectionTexture = new CubeTexture("textures/TropicalSunnyDay", scene);
+    skyboxMaterial.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
+    skybox.material = skyboxMaterial;
+    // Cette propriété permet au skybox de rester fixe (il sera toujours rendu à l'infini)
+    skybox.infiniteDistance = true;
     this.camera.attachControl();
 
     const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
