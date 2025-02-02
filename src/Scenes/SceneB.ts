@@ -33,7 +33,7 @@ export class SceneB extends AbstractScene {
       : new Vector3(0, 0.5, 0);
   }
 
-  protected createScene(): Scene {
+  protected async createScene(): Promise<Scene> {
     const scene = new Scene(this.engine);
 
     this.player = MeshBuilder.CreateBox("player", { size: 1 }, scene);

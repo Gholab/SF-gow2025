@@ -8,8 +8,8 @@ export abstract class AbstractScene {
     this.engine = new Engine(this.canvas, true);
   }
 
-  public init(): void {
-    this.scene = this.createScene();
+  public async init(): Promise<void> {
+    this.scene = await this.createScene();
     this.engine.runRenderLoop(() => {
       this.update();
       this.scene.render();
@@ -19,7 +19,7 @@ export abstract class AbstractScene {
     });
   }
 
-  protected abstract createScene(): Scene;
+  protected abstract createScene(): Promise<Scene>;
   public abstract update(): void;
 
   public dispose(): void {

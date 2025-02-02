@@ -35,7 +35,7 @@ export class MainScene extends AbstractScene {
     this.init();
   }
 
-  protected createScene(): Scene {
+  protected async createScene(): Promise<Scene> {
     const scene = new Scene(this.engine);
 
     this.camera = new FreeCamera("MainCamera", new Vector3(0, 20, 50), scene);
