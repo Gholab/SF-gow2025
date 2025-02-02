@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import BasicScene from './components/BasicScene.vue'
+// import BasicScene from './components/BasicScene.vue'
+import SceneCanvas from './components/SceneCanvas.vue'
 </script>
 
 <template>
-  <BasicScene/>
+  <SceneCanvas/>
 </template>
 
 <style scoped>
