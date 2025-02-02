@@ -8,20 +8,25 @@ import {
   Mesh,
   StandardMaterial,
   Color3,
-  KeyboardEventTypes
+  KeyboardEventTypes,
   CubeTexture,
   Texture,
+  HavokPlugin,
+  PhysicsAggregate,
+  PhysicsShapeType,
 } from "@babylonjs/core";
 import { SceneManager } from "../SceneManager";
 import { SceneA } from './SceneA';
 import { SceneB } from "./SceneB";
+import HavokPhysics from '@babylonjs/havok'
 
 export class MainScene extends AbstractScene {
   private camera!: FreeCamera;
   private player!: Mesh;
+  private playerAggregate!: PhysicsAggregate;
   private teleportObjects: Mesh[] = [];
   private inputMap: { [key: string]: boolean } = {};
-  private initialPlayerPosition: Vector3 = new Vector3(0, 0.5, 0);
+  private initialPlayerPosition: Vector3 = new Vector3(0, 6, 4);
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -38,8 +43,12 @@ export class MainScene extends AbstractScene {
   protected async createScene(): Promise<Scene> {
     const scene = new Scene(this.engine);
 
-    this.camera = new FreeCamera("MainCamera", new Vector3(0, 20, 50), scene);
-    this.camera.setTarget(new Vector3(0, 0, -20));
+    const havokInstance = await HavokPhysics();
+    const havokPlugin = new HavokPlugin(true, havokInstance);
+    // Active la physique avec une gravité (ici 9.81 en Y négatif)
+    scene.enablePhysics(new Vector3(0, -9.81, 0), havokPlugin);
+
+
     const skyboxSize = 1000;
     const skybox = MeshBuilder.CreateBox("skyBox", { size: skyboxSize }, scene);
     const skyboxMaterial = new StandardMaterial("skyBoxMaterial", scene);
@@ -58,6 +67,8 @@ export class MainScene extends AbstractScene {
 
     const ground = MeshBuilder.CreateGround("ground", { width: 50, height: 50 }, scene);
     ground.checkCollisions = true;
+    new PhysicsAggregate(ground, PhysicsShapeType.BOX, { mass: 0 }, scene);
+
 
     this.player = MeshBuilder.CreateBox("player", { size: 1 }, scene);
     this.player.position = this.initialPlayerPosition ? this.initialPlayerPosition.clone() : new Vector3(0, 0.5, 0);
@@ -65,6 +76,8 @@ export class MainScene extends AbstractScene {
     playerMat.diffuseColor = Color3.Blue();
     this.player.material = playerMat;
     this.player.checkCollisions = true;
+
+    this.playerAggregate = new PhysicsAggregate(this.player, PhysicsShapeType.BOX, { mass: 1, restitution: 0.75 }, scene);
 
     scene.onKeyboardObservable.add((kbInfo) => {
       switch (kbInfo.type) {
@@ -96,19 +109,48 @@ export class MainScene extends AbstractScene {
   }
 
   public update(): void {
-    const delta = 0.1; // vitesse de déplacement
+    const speed = 5;
+    const jumpSpeed = 8;
+
+    let moveDirection = new Vector3(0, 0, 0);
     if (this.inputMap["z"] || this.inputMap["ArrowUp"]) {
-      this.player.position.z -= delta;
+      moveDirection.z -= 1;
     }
     if (this.inputMap["s"] || this.inputMap["ArrowDown"]) {
-      this.player.position.z += delta;
+      moveDirection.z += 1;
     }
     if (this.inputMap["q"] || this.inputMap["ArrowLeft"]) {
-      this.player.position.x += delta;
+      moveDirection.x += 1;
     }
     if (this.inputMap["d"] || this.inputMap["ArrowRight"]) {
-      this.player.position.x -= delta;
+      moveDirection.x -= 1;
     }
+
+    if (moveDirection.length() > 0) {
+      moveDirection.normalize();
+      moveDirection.scaleInPlace(speed);
+    }
+
+    // Récupérer la vélocité actuelle du joueur (via son imposteur physique)
+    const currentVelocity = this.playerAggregate.body.getLinearVelocity();
+
+    // Pour conserver la vélocité verticale déjà appliquée par la physique (gravité)
+    // On la stocke dans une variable que l'on pourra éventuellement modifier pour le saut
+    let newVerticalVelocity = currentVelocity.y;
+
+    // Si la touche espace est pressée et que le joueur semble être au sol,
+    // par exemple en vérifiant que la composante verticale est très faible :
+    if (this.inputMap[" "] && Math.abs(currentVelocity.y) < 0.1) {
+      // Déclencher le saut en fixant la vitesse verticale
+      newVerticalVelocity = jumpSpeed;
+    }
+
+    // Composer la nouvelle vélocité en conservant le mouvement horizontal calculé et la composante verticale (mise à jour ou non)
+    const newVelocity = new Vector3(moveDirection.x, newVerticalVelocity, moveDirection.z);
+
+    // Appliquer la nouvelle vélocité via l'imposteur physique
+    this.playerAggregate.body.setLinearVelocity(newVelocity);
+
 
     for (const teleport of this.teleportObjects) {
       const distance = Vector3.Distance(this.player.position, teleport.position);
